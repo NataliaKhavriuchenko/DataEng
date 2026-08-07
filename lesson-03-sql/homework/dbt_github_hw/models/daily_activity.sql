@@ -4,7 +4,17 @@
 -- Контракт колонок нижче; заглушка повертає 0 рядків.
 -- =====================================================================
 SELECT
-    NULL::DATE   AS event_date,
-    NULL::BIGINT AS events,
-    NULL::BIGINT AS running_events
-WHERE false  -- TODO: агрегувати stg_events по event_date, потім running total через window-функцію
+    event_date,
+    events,
+    sum(events) over (
+        ORDER BY event_date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS running_events
+FROM (
+    SELECT
+        event_date,
+        count(*) as events
+    FROM {{ ref('stg_events') }}
+    GROUP BY event_date
+) as daily
+ORDER BY event_date
