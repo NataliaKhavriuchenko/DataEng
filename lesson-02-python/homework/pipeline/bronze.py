@@ -14,10 +14,55 @@ TODO (Завдання 1): реалізуйте build_bronze().
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 
 from . import config
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def build_bronze() -> pl.DataFrame:
-    raise NotImplementedError("Завдання 1: реалізуйте bronze згідно з CONTRACTS.md")
+    lazy = pl.scan_ndjson(
+        config.LANDING_FILE,
+        schema=config.LANDING_SCHEMA,
+    )
+
+    lazy = lazy.select(
+        [
+            pl.col("id").alias("event_id"),
+            pl.col("type").alias("event_type"),
+            pl.col("actor").struct.field("id").alias("actor_id"),
+            pl.col("actor").struct.field("login").alias("actor_login"),
+            pl.col("repo").struct.field("id").alias("repo_id"),
+            pl.col("repo").struct.field("name").alias("repo_name"),
+            pl.col("created_at").str.to_datetime(
+                "%Y-%m-%dT%H:%M:%SZ",
+                time_zone="UTC",
+            ),
+            pl.col("public"),
+            pl.col("payload").struct.field("action").alias("action"),
+            (
+                pl.col("payload")
+                .struct.field("commits")
+                .list.len()
+                .fill_null(0)
+                .cast(pl.Int64)
+                .alias("commit_count")
+            ),
+        ]
+    )
+
+    df_bronze = lazy.collect()
+
+    df_bronze.write_parquet(
+        config.BRONZE_FILE,
+        mkdir=True,
+    )
+
+    logger.info("Кол-во строк: %d", len(df_bronze))
+    logger.info("\n%s", df_bronze.head(5))
+
+    return df_bronze
