@@ -67,6 +67,7 @@ with DAG(
     dag_id="github_archive_daily",
     schedule="0 6 * * *",
     start_date=datetime(2024, 1, 1),
+    max_active_runs=1,
     catchup=False,
     tags=["github", "archive"],
 ) as dag:
@@ -76,7 +77,7 @@ with DAG(
           hour=14,
           timeout=600,
           poke_interval=60,
-          mode="poke",
+          mode="reschedule",
       )
       
 

@@ -43,3 +43,4 @@ class GHArchiveSensor(BaseSensorOperator):
             return False
         except urllib.error.URLError:
             return False
+            
