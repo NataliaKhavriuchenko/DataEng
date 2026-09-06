@@ -12,8 +12,10 @@
   * у DAG додайте сенсор першою задачею з timeout=600, poke_interval=60,
     mode="reschedule".
 """
-
 from __future__ import annotations
+
+import urllib.request
+import urllib.error
 
 from airflow.sensors.base import BaseSensorOperator
 
@@ -24,5 +26,21 @@ class GHArchiveSensor(BaseSensorOperator):
         self.hour = hour
 
     def poke(self, context) -> bool:
-        # TODO: HEAD-запит до gharchive за context["ds"] і self.hour; True, якщо 200.
-        raise NotImplementedError("Реалізуйте GHArchiveSensor.poke — див. SPEC.md")
+        ds = context["ds"]
+
+        url = f"https://data.gharchive.org/{ds}-{self.hour:02d}.json.gz"
+
+        request = urllib.request.Request(
+            url,
+            method="HEAD",
+            headers={"User-Agent": "gh-etl/1.0"},
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.status == 200
+        except urllib.error.HTTPError:
+            return False
+        except urllib.error.URLError:
+            return False
+            
