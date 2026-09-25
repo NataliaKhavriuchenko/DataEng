@@ -14,3 +14,25 @@
 # Скрипт app/gh_ingest.py — ДАНО, не редагуйте його.
 
 # TODO: реалізуйте Dockerfile тут.
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY app/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /cache \
+    && chown appuser:appuser /cache
+
+COPY app/ ./app/
+
+USER appuser
+
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+    CMD ["python", "-c", "import os; raise SystemExit(0 if os.path.isdir('/cache') and os.access('/cache', os.W_OK) else 1)"]
+
+ENTRYPOINT ["python", "app/gh_ingest.py"]
