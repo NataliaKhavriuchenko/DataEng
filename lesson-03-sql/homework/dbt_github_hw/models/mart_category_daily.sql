@@ -4,10 +4,17 @@
 -- Контракт колонок нижче; заглушка повертає 0 рядків.
 -- =====================================================================
 SELECT
-    NULL::DATE    AS event_date,
-    NULL::BOOLEAN AS is_weekend,
-    NULL::VARCHAR AS category,
-    NULL::BIGINT  AS events,
-    NULL::BIGINT  AS distinct_repos,
-    NULL::BIGINT  AS distinct_actors
-WHERE false  -- TODO: 3-way join + GROUP BY (event_date, is_weekend, category)
+    e.event_date,
+    d.is_weekend,
+    c.category,
+    count(e.event_type)  AS events,
+    count(DISTINCT e.repo_name)  AS distinct_repos,
+    count(DISTINCT e.actor_login)  AS distinct_actors
+FROM {{ ref('stg_events') }} AS e
+LEFT JOIN {{ ref('event_categories') }} AS c
+    ON e.event_type = c.event_type
+LEFT JOIN {{ ref('calendar') }} AS d
+    on e.event_date = d.day 
+GROUP BY e.event_date, d.is_weekend, c.category  
+order by e.event_date
+
